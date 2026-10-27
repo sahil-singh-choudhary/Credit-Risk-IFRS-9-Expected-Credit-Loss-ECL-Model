@@ -134,11 +134,35 @@ through the production PD model, assign an IFRS 9 stage, and compute that accoun
 contribution under both base and stressed scenarios — exactly the kind of output an underwriting or
 provisioning system would produce operationally.
 
+## Lending decision: PD → expected NPV → approval rule
+
+`Lending_NPV_Approval_Cutoff.ipynb` extends the PD model into a credit decision: **who should we lend to?**
+It uses the full 1,000-loan German Credit dataset (`german_credit_full_1000.csv`, 30% default rate).
+
+1. **SQL segmentation:** default rates by checking-account status range from 12% to 49%.
+2. **Hypothesis tests:** chi-square shows default depends on checking-account status (p ≈ 1e-26);
+   a Welch t-test shows defaulters take longer loans (24.9 vs 19.2 months, p ≈ 2e-10).
+3. **PD model:** Gradient Boosting, stratified 70/30 split (test AUC 0.79 on 300 held-out loans).
+4. **Expected NPV per loan:** amortising monthly loan, 15% APR, 5% funding cost, 2% servicing cost;
+   defaulters pay half the term, then 40% recovery (LGD 60%). Expected NPV = (1 − PD) × NPV(good) + PD × NPV(default).
+
+**Results on 300 held-out loans (realised outcomes):**
+
+| Policy | Approval rate | Bad rate | Portfolio NPV (DM) |
+|---|---|---|---|
+| Approve all | 100% | 30% | −35,354 |
+| Approve if expected NPV > 0 | 46% | 19% | **+9,931** |
+
+The expected-NPV rule uses no outcome data, so it is a fair out-of-sample comparison. The assumptions are illustrative
+and stated in the notebook so they can be stress-tested.
+
 ## Project structure
 
 ```
 .
 ├── Credit_Risk_IFRS9_ECL_Model.ipynb   # Main notebook — full pipeline, charts, results
+├── Lending_NPV_Approval_Cutoff.ipynb   # PD → expected NPV → approval policy
+├── german_credit_full_1000.csv        # Full 1,000-loan dataset used by the lending notebook
 ├── data/
 │   ├── german_credit_raw.csv           # Raw extract (536 real records, A-coded)
 │   ├── build_clean_dataset.py          # Cleans & relabels the raw data
